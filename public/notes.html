@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notes</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-size: 20px;
+            font-family: 'Roboto Mono', monospace;
+            margin: 0;
+            padding: 0;
+        }
+
+        .iphone {
+            background-color: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            width: 375px;
+            height: var(--tg-viewport-height);
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .add-button {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .no-notes {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--tg-theme-hint-color);
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--tg-theme-bg-color);
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+        }
+
+        .modal-content {
+            background-color: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 5px;
+            margin-bottom: 20px;
+            border: 1px solid var(--tg-theme-text-color);
+            border-radius: 8px;
+            font-size: 18px;
+            color: var(--tg-theme-text-color);
+            background-color: var(--tg-theme-bg-color);
+            resize: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            outline: none;
+        }
+
+        .delete-button {
+            background-color: #ff3b30;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 4px 8px;
+            margin-left: 8px;
+            align-self: flex-end;
+        }
+
+        .note {
+            background-color: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            font-size: 16px;
+            color: var(--tg-theme-text-color);
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        @font-face {
+            font-family: 'Roboto Mono';
+            src: url('RobotoMono-Regular.ttf') format('truetype');
+        }
+    </style>
+    <script>
+
+        async function OnLoad() {
+            var request = new Request("/get_data", {
+                method: "POST",
+                body: JSON.stringify({ data: tg.initDataUnsafe, hash: tg.initDataUnsafe.hash, data_str: tg.initData }),
+                headers: { "Content-Type": "application/json" }
+            });
+
+            fetch(request)
+                .then(response => response.json())
+                .then(note_list => {
+                    var newElement = document.createElement("div");
+
+                    if (note_list.list.length === 0) {
+                        newElement.textContent = 'No notes';
+                    } else {
+                        newElement.textContent = 'Your notes:';
+                        var notesDiv = document.createElement("div");
+
+                        note_list.list.forEach(function (note) {
+                            var noteElement = document.createElement("div");
+                            noteElement.innerHTML = `
+                                <div class="note" id="${note.id}">
+                                    ${note.text}
+                                    <button class="delete-button" data-note-id="${note.id}">Delete</button>
+                                </div>
+                            `;
+                            const deleteButton = noteElement.querySelector(".delete-button");
+                            // Click handler for the "Delete" button in each note
+                            deleteButton.addEventListener("click", function () {
+                                const noteId = this.getAttribute("data-note-id");
+
+                                const popupParams = {
+                                    title: "Confirmation",
+                                    message: "Are you sure you want to delete this note?",
+                                    buttons: [
+                                        {
+                                            type: "destructive",
+                                            text: "Yes",
+                                            id: "confirmDelete"
+                                        },
+                                        {
+                                            type: "close",
+                                            text: "Cancel",
+                                            id: "cancelDelete"
+                                        }
+                                    ]
+                                };
+
+                                tg.showPopup(popupParams, function (buttonId) {
+                                    if (buttonId === "confirmDelete") {
+                                        // User confirmed deletion
+                                        const requestData = {
+                                            id: noteId,
+                                            data: tg.initDataUnsafe,
+                                            hash: tg.initDataUnsafe.hash,
+                                            data_str: tg.initData,
+                                        };
+
+                                        fetch("/delete_note", {
+                                            method: "POST",
+                                            body: JSON.stringify(requestData),
+                                            headers: {
+                                                "Content-Type": "application/json",
+                                            },
+                                        })
+                                            .then((response) => response.json())
+                                            .then((result) => {
+                                                if (result.status) {
+                                                    const noteElement = document.getElementById(noteId);
+                                                    noteElement.parentNode.removeChild(noteElement);
+                                                    // Check if there are any notes left
+                                                    if (document.querySelectorAll(".note").length === 0) {
+                                                        const status = document.querySelector('#status');
+                                                        status.textContent = 'No notes';
+                                                    }
+                                                } else {
+                                                    tg.showAlert("Error deleting note.");
+                                                }
+                                            })
+                                            .catch((error) => {
+                                                console.error("Error sending request:", error);
+                                            });
+                                    } else if (buttonId === "cancelDelete") {
+                                        // User canceled deletion
+                                    }
+                                });
+                            });
+
+                            notesDiv.appendChild(noteElement);
+                        });
+
+                        document.querySelector('#notes').appendChild(notesDiv);
+                    }
+
+                    document.querySelector('#status').append(newElement);
+                })
+                .catch(error => {
+                    console.error("Error fetching data:", error);
+                });
+        }
+    </script>
+</head>
+
+<body onload=OnLoad()>
+    <div class='iphone'>
+        <div style='overflow-y:auto'>
+            <div class='no-notes' id="status"></div>
+            <div id='notes'></div>
+        </div>
+
+        <div class="add-button" id="addNoteButton">+</div>
+
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h3>Create a Note</h3>
+            <textarea id="noteText" placeholder="Enter your note text"></textarea>
+        </div>
+    </div>
+    <script>
+        const tg = window.Telegram.WebApp;
+
+		// Create a BackButton instance
+		const backButton = tg.BackButton;
+
+        backButton.onClick(closeModal);
+
+        const noteText = document.getElementById("noteText");
+
+        noteText.addEventListener("input", function () {
+            this.style.height = "auto";
+            this.style.height = (this.scrollHeight) + "px";
+        });
+
+        function openModal() {
+            Telegram.WebApp.onEvent('mainButtonClicked', saveNote);
+            const modal = document.getElementById("modal");
+            modal.style.display = "block";
+		    backButton.isVisible = true;
+            tg.MainButton.show();
+            tg.MainButton.text = 'Save';
+
+        }
+
+        function closeModal() {
+            const modal = document.getElementById("modal");
+            modal.style.display = "none";
+		    backButton.isVisible = false;
+            tg.MainButton.hide();
+
+        }
+
+        function saveNote() {
+            const noteText = document.getElementById("noteText").value;
+            if (noteText.trim() === "") {
+                tg.showAlert("Please enter note text.");
+                return;
+            }
+
+            const requestData = {
+                text: noteText,
+                data: tg.initDataUnsafe,
+                hash: tg.initDataUnsafe.hash,
+                data_str: tg.initData,
+            };
+
+            fetch("/new_note", {
+                method: "POST",
+                body: JSON.stringify(requestData),
+                headers: {
+                    "Content-Type": "application/json",
+                },
+            })
+                .then((response) => response.json())
+                .then((newNote) => {
+                    if (newNote.id) {
+                        const notesDiv = document.querySelector('#notes');
+                        var noteElement = document.createElement("div");
+                        noteElement.innerHTML = `
+                            <div class="note" id="${newNote.id}">
+                                ${noteText}
+                                <button class="delete-button" data-note-id="${newNote.id}">Delete</button>
+                            </div>
+                        `;
+                        const status = document.querySelector('#status');
+                        status.textContent = 'Your notes:';
+                        const deleteButton = noteElement.querySelector(".delete-button");
+                        // Click handler for the "Delete" button in each note
+                        deleteButton.addEventListener("click", function () {
+                            const noteId = this.getAttribute("data-note-id");
+
+                            const popupParams = {
+                                title: "Confirmation",
+                                message: "Are you sure you want to delete this note?",
+                                buttons: [
+                                    {
+                                        type: "destructive",
+                                        text: "Yes",
+                                        id: "confirmDelete"
+                                    },
+                                    {
+                                        type: "close",
+                                        text: "Cancel",
+                                        id: "cancelDelete"
+                                    }
+                                ]
+                            };
+
+                            tg.showPopup(popupParams, function (buttonId) {
+                                if (buttonId === "confirmDelete") {
+                                    // User confirmed deletion
+                                    const requestData = {
+                                        id: noteId,
+                                        data: tg.initDataUnsafe,
+                                        hash: tg.initDataUnsafe.hash,
+                                        data_str: tg.initData,
+                                    };
+
+                                    fetch("/delete_note", {
+                                        method: "POST",
+                                        body: JSON.stringify(requestData),
+                                        headers: {
+                                            "Content-Type": "application/json",
+                                        },
+                                    })
+                                        .then((response) => response.json())
+                                        .then((result) => {
+                                            if (result.status) {
+                                                const noteElement = document.getElementById(noteId);
+                                                noteElement.parentNode.removeChild(noteElement);
+                                                // Check if there are any notes left
+                                                if (document.querySelectorAll(".note").length === 0) {
+                                                    const status = document.querySelector('#status');
+                                                    status.textContent = 'No notes';
+                                                }
+                                            } else {
+                                                tg.showAlert("Error deleting note.");
+                                            }
+                                        })
+                                        .catch((error) => {
+                                            console.error("Error sending request:", error);
+                                        });
+                                } else if (buttonId === "cancelDelete") {
+                                    // User canceled deletion
+                                }
+                            });
+                        });
+
+                        notesDiv.appendChild(noteElement);
+                        document.getElementById("noteText").value = "";
+                        noteText.value = "";
+                        closeModal();
+                        tg.MainButton.hide();
+
+                    } else {
+                        tg.showAlert("Error adding note.");
+                    }
+                })
+                .catch((error) => {
+                    console.error("Error sending request:", error);
+                });
+        }
+
+        const addNoteButton = document.getElementById("addNoteButton");
+        addNoteButton.addEventListener("click", openModal);
+    </script>
+</body>
+
+</html>

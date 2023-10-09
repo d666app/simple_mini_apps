@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini Slots</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            color: var(--tg-theme-text-color);
+        }
+        #container {
+            background-color: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.3);
+            width: 300px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: var(--tg-theme-text-color);
+        }
+        #balance {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--tg-theme-text-color);
+        }
+        #slots {
+            font-size: 60px;
+            margin: 20px 0;
+            color: var(--tg-theme-text-color);
+        }
+        button {
+            font-size: 18px;
+            padding: 10px 20px;
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: var(--tg-theme-link-color);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <h1>Mini Slots</h1>
+        <p>Your balance: <span id="balance"></span> points</p>
+        <div id="slots">🍌 🍌 🍌</div>
+
+    </div>
+
+    <script>
+const tg = window.Telegram.WebApp;
+tg.MainButton.show();
+tg.MainButton.text = 'Spin';
+Telegram.WebApp.onEvent('mainButtonClicked', spinSlots);
+        let spinning = false;
+        // Function to update and display the balance
+        function updateBalance() {
+            document.getElementById("balance").textContent = balance;
+        }
+
+        // Load the balance from the server when the page loads
+        fetch('/casino_get',{
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ data: tg.initDataUnsafe, hash: tg.initDataUnsafe.hash, data_str: tg.initData, value: balance }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.balance !== undefined) {
+                    balance = parseInt(data.balance, 10); // Parse the value to an integer
+                } else {
+                    balance = 1000;
+                }
+                updateBalance(); // Update the balance display
+            })
+            .catch(error => {
+                console.error('Error loading balance: ', error);
+                balance = 1000;
+                updateBalance(); // Update the balance display with a default value
+            });
+
+        function spinSlots() {
+            if (!spinning && balance >= 10) {
+                spinning = true;
+                balance -= 10;
+                updateBalance();
+
+                const emojis = ["🍎", "🍌", "🍇", "🍓", "🍒", "🍍"];
+                const slot1 = emojis[Math.floor(Math.random() * emojis.length)];
+                const slot2 = emojis[Math.floor(Math.random() * emojis.length)];
+                const slot3 = emojis[Math.floor(Math.random() * emojis.length)];
+
+                // Display scrolling animation
+                let i = 0;
+                const scrollInterval = setInterval(() => {
+                    document.getElementById("slots").textContent = emojis[i % emojis.length] + " " + emojis[(i + 1) % emojis.length] + " " + emojis[(i + 2) % emojis.length];
+                    i++;
+                    if (i === 30) {
+                        clearInterval(scrollInterval);
+
+                        // Display the final fruit
+                        document.getElementById("slots").textContent = `${slot1} ${slot2} ${slot3}`;
+
+                        setTimeout(() => {
+                            spinning = false;
+
+                            if (slot1 === slot2 && slot2 === slot3) {
+                                balance += 1000;
+                                updateBalance();
+                                tg.showPopup({"title":"WIN","message":"You won 1000 points!"});
+                                tg.HapticFeedback.notificationOccurred('success');
+                            } else {
+                                tg.showPopup({"title":"LOSE","message":"No match. You lost 10 points."});
+                                tg.HapticFeedback.notificationOccurred('error');
+                            }
+
+                            // Store the updated balance on the server
+                            fetch('/casino_set', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({ data: tg.initDataUnsafe, hash: tg.initDataUnsafe.hash, data_str: tg.initData, value: balance }),
+                            })
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success !== true) {
+                                    console.error('Error storing balance on the server');
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error storing balance on the server: ', error);
+                            });
+
+                        }, 1000); // Display result after 1 second
+                    }
+                }, 100); // Scroll every 100 milliseconds
+            } else if (spinning) {
+                tg.showAlert("Wait for the current spin to finish.");
+            } else {
+                tg.showAlert("Insufficient balance to spin.");
+            }
+        }
+
+
+    </script>
+</body>
+</html>

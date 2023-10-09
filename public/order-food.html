@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Shopping Cart</title>
+    <style>
+        /* Styles for the body and container */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color);
+            margin: 0;
+            padding: 0;
+            color: var(--tg-theme-text-color);
+            font-size: 10px;
+        }
+
+        #container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            background-color: var(--tg-theme-bg-color);
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Styles for headings */
+        h1, h2, h3 {
+            text-align: center;
+        }
+
+        /* Styles for product elements */
+        .product {
+            flex: 0 0 calc(33.33% - 20px);
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Styles for buttons and lists */
+        button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 5px 0;
+        }
+
+        /* Styles for product images */
+        .food-image {
+            width: 100px;
+            height: auto;
+            display: block;
+            margin: 10px auto;
+        }
+
+        /* Styles for quantity buttons */
+        .quantity-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:  var(--tg-theme-button-color);
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            width: 100px;
+        }
+
+        .quantity-button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            width: 100px;
+            border-radius: 5px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <div id="container">
+        <!-- Product List -->
+    </div>
+
+    <script>
+        /**
+         * A dictionary to manage product quantities and prices.
+         * @type {Object.<string, { quantity: number, price: number }>}
+         */
+        const productData = {
+            "Product1": {
+                quantity: 0,
+                price: 10.99, // Price for Product1 in dollars
+            },
+            "Product2": {
+                quantity: 0,
+                price: 5.99, // Price for Product2 in dollars
+            },
+            // Add more products and their prices as needed
+        };
+
+        /**
+         * Telegram WebApp instance.
+         * @type {Object}
+         */
+        let tg = window.Telegram.WebApp;
+
+        /**
+         * Create a product element.
+         * @param {Object} item - Product information.
+         * @returns {HTMLElement} - Product element.
+         */
+        function createProductElement(item) {
+            const productDiv = document.createElement('div');
+            productDiv.classList.add('product');
+            productDiv.dataset.name = item.name;
+
+            const p = document.createElement('div');
+            p.innerHTML = `${item.name} · $${productData[item.name].price}`;
+
+            // Create an image element for the food photo
+            const img = document.createElement('img');
+            img.classList.add('food-image');
+            img.src = `foods/${item.name}.png`;
+            img.alt = item.name;
+
+            productDiv.appendChild(img);
+            productDiv.appendChild(p);
+
+            // Create a div for quantity control
+            const quantityDiv = document.createElement('div');
+            quantityDiv.classList.add('quantity-buttons');
+
+            // Create a button for reducing products
+            const reduceButton = document.createElement('button');
+            reduceButton.textContent = '-';
+            reduceButton.classList.add('quantity-button', 'reduce-button');
+            reduceButton.style.display = 'none'; // Initially hidden
+            reduceButton.onclick = function () {
+                const productName = item.name;
+                if (productData[productName].quantity > 0) {
+                    productData[productName].quantity--;
+                    updateQuantity(productName);
+                }
+            };
+
+            // Create a span for displaying quantity
+            const quantityDisplay = document.createElement('span');
+            quantityDisplay.classList.add('quantity-display');
+            quantityDisplay.textContent = '0';
+            quantityDisplay.style.display = 'none'; // Initially hidden
+
+            // Create a button for adding products
+            const addButton = document.createElement('button');
+            addButton.textContent = 'ADD';
+            addButton.classList.add('quantity-button', 'add-button');
+            addButton.onclick = function () {
+                const productName = item.name;
+                productData[productName].quantity++;
+                updateQuantity(productName);
+            };
+
+            quantityDiv.appendChild(reduceButton);
+            quantityDiv.appendChild(quantityDisplay);
+            quantityDiv.appendChild(addButton);
+
+            productDiv.appendChild(quantityDiv);
+
+            return productDiv;
+        }
+
+        /**
+         * Calculate and log the total cost in dollars.
+         * @returns {[string[], string]} - Ordered products and total cost.
+         */
+        function calculateAndLogTotalCost() {
+            let totalCost = 0;
+            const orderedProducts = [];
+
+            for (const productName in productData) {
+                const { quantity, price } = productData[productName];
+                const cost = quantity * price;
+
+                if (quantity > 0) {
+                    orderedProducts.push(`${productName} x ${quantity} - $${cost.toFixed(2)}`);
+                }
+
+                totalCost += cost;
+            }
+
+            if (totalCost.toFixed(2) > 0) {
+                tg.MainButton.show();
+                tg.MainButton.text = 'Order for $' + totalCost.toFixed(2);
+                return [orderedProducts, totalCost.toFixed(2)];
+            } else {
+                tg.MainButton.text = "You haven't chosen any products";
+                tg.MainButton.hide();
+            }
+        }
+
+        /**
+         * Handle the main button click event and send the order message.
+         */
+        Telegram.WebApp.onEvent('mainButtonClicked', function(){
+            orderData = calculateAndLogTotalCost();
+            const orderText = "You have successfully placed an order:\n\n" + orderData[0].join('\n') + `\n\nTotal: $${orderData[1]}`;
+            console.log(orderText);
+            // Send the order message using the tg.sendData() method
+            tg.sendData(orderText);
+        });
+
+        /**
+         * Send the order message.
+         * @param {string[]} orderedProducts - List of ordered products.
+         * @param {string} totalCost - Total cost of the order.
+         */
+        function sendOrderMessage(orderedProducts, totalCost) {
+            const orderText = "You have successfully placed an order:\n\n" + orderedProducts.join('\n') + `\nTotal: $${totalCost}`;
+            console.log(orderText);
+            // Send the order message using the tg.sendData() method
+            tg.sendData(orderText);
+        }
+
+        /**
+         * Update the displayed quantity and buttons for a product.
+         * @param {string} productName - Name of the product.
+         */
+        function updateQuantity(productName) {
+            const productDiv = document.querySelector(`[data-name="${productName}"]`);
+            const quantityDisplay = productDiv.querySelector('.quantity-display');
+            const addButton = productDiv.querySelector('.add-button');
+            const reduceButton = productDiv.querySelector('.reduce-button');
+
+            quantityDisplay.textContent = productData[productName].quantity.toString();
+
+            if (productData[productName].quantity > 0) {
+                addButton.textContent = '+';
+                reduceButton.style.display = 'inline-block';
+                quantityDisplay.style.display = 'inline-block';
+            } else {
+                addButton.textContent = 'ADD';
+                reduceButton.style.display = 'none';
+                quantityDisplay.style.display = 'none';
+            }
+
+            // Calculate and log the total cost in dollars
+            calculateAndLogTotalCost();
+        }
+
+        /**
+         * Fetch food data from the server and create product elements.
+         */
+        async function fetchFoodData() {
+            try {
+                const response = await fetch('/get_food');
+                const foodData = await response.json();
+
+                const container = document.getElementById('container');
+
+                foodData.forEach((item, index) => {
+                    // Initialize product data with quantity set to 0
+                    productData[item.name] = {
+                        quantity: 0,
+                        price: item.price, // Set the price from the fetched data
+                    };
+
+                    const productDiv = createProductElement(item);
+                    container.appendChild(productDiv);
+                });
+            } catch (error) {
+                console.error('Error fetching food data:', error);
+            }
+        }
+
+        // Call the function to fetch and display food data
+        fetchFoodData();
+    </script>
+</body>
+</html>

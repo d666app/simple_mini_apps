@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <title>Mini Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            color:var(--tg-theme-text-color);
+        }
+        canvas {
+            display: block;
+            background-color: var(--tg-theme-bg-color);
+        }
+        #game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--tg-theme-bg-color);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            color: var(--tg-theme-button-text-color);
+        }
+        #start-menu {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: var(--tg-theme-bg-color);
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        #start-button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+        }
+        #restart-button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        .top-players-button {
+            background-color: var(--tg-theme-hint-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 18px;
+            margin-top: 20px;
+            transition: background-color 0.2s, color 0.2s;
+        }
+        #restart-button:hover {
+            background-color: var(--tg-theme-link-color);
+            color: var(--tg-theme-bg-color);
+        }
+        #score-display {
+            display: none;
+            position: absolute;
+            top: 10px; /* Adjust the top position as needed */
+            left: 10px; /* Adjust the left position as needed */
+            color: var(--tg-theme-text-color); /* Set the text color */
+            font-size: 18px; /* Set the font size */
+            z-index: 1; /* Ensure it's above the canvas */
+        }
+
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <object id="player" data="images/air4.svg#img" style="position: absolute; width: 50px; height: 50px; display: none;"> </object>
+
+
+    <!-- Add this button in the Start Menu -->
+    <div id="start-menu">
+        <h1>Telegram Mini Game</h1>
+        <button id="start-button">Start Game</button>
+        <!-- Add the top players button -->
+        <button class="top-players-button" style="margin-top: 10px;">Top Players</button>
+    </div>
+
+    <!-- Add this button in the Game Over Screen -->
+    <div id="game-over" style="display: none;color:var(--tg-theme-text-color)">
+        <h2>Game Over</h2>
+        <p>Your final score: <p/><span id="final-score">0</span> / <span id="best-score" style="color:var(--tg-theme-link-color)">0</span></p>
+        <button id="restart-button">Restart</button>
+        <!-- Add the top players button -->
+        <button class="top-players-button" style="margin-top: 10px;">Top Players</button>
+    </div>
+
+    <div id="score-display">
+        Score: <span id="score">0</span>
+    </div>
+    <script>
+
+        let tg = window.Telegram.WebApp;
+        var playerObject = document.getElementById("player");
+        if (playerObject) {
+          playerObject.onload = function() {
+            var svgDocument = playerObject.contentDocument;
+            var svgElement = svgDocument.getElementById("img");
+            svgElement.setAttribute("fill", tg.themeParams.link_color);
+          };
+        }
+
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const player = {
+            x: canvas.width / 2 - 15,
+            y: canvas.height - 50 - 20,
+            width: 50,
+            height: 50,
+            speed: 5,
+        };
+        let objects = [];
+        let obstacles = [];
+        const objectWidth = 50;
+        const objectHeight = 50;
+        let objectSpeed = 2;
+        let score = 0;
+        let gameOver = false;
+
+        function drawAirplane() {
+            const airplane = document.getElementById("player");
+            airplane.style.left = player.x + "px";
+            airplane.style.top = player.y + "px";
+        }
+
+        // Function to draw objects (coins)
+        function drawObjects() {
+            objects.forEach((object) => {
+                ctx.drawImage(object.element, object.x, object.y, objectWidth, objectHeight);
+            });
+        }
+
+        // Function to draw obstacles (dogs)
+        function drawObstacles() {
+            obstacles.forEach((obstacle) => {
+                ctx.drawImage(obstacle.element, obstacle.x, obstacle.y, objectWidth, objectHeight);
+            });
+        }
+
+        function moveObjects() {
+            objects.forEach((object) => {
+                object.y += objectSpeed;
+                if (object.y > canvas.height) {
+                    object.y = 0;
+                    object.x = Math.random() * (canvas.width - objectWidth);
+                }
+            });
+        }
+
+        function moveObstacles() {
+            obstacles.forEach((obstacle) => {
+                obstacle.y += objectSpeed;
+                if (obstacle.y > canvas.height) {
+                    obstacle.y = 0;
+                    obstacle.x = Math.random() * (canvas.width - objectWidth);
+                }
+            });
+        }
+        function updateScoreDisplay() {
+            const scoreElement = document.getElementById("score");
+            scoreElement.textContent = score;
+        }
+
+
+        function collisionDetection() {
+            objects.forEach((object, index) => {
+                if (
+                    player.x < object.x + objectWidth &&
+                    player.x + player.width > object.x &&
+                    player.y < object.y + objectHeight &&
+                    player.y + player.height > object.y
+                ) {
+                    objects.splice(index, 1);
+                    score++;
+                    updateScoreDisplay(); // Update the displayed score
+                    generateObject();
+                }
+            });
+
+            obstacles.forEach((obstacle) => {
+                if (
+                    player.x < obstacle.x + objectWidth &&
+                    player.x + player.width > obstacle.x &&
+                    player.y < obstacle.y + objectHeight &&
+                    player.y + player.height > obstacle.y
+                ) {
+                    gameOver = true;
+                }
+            });
+        }
+
+
+
+
+
+        function drawGameOver() {
+            const gameOverElement = document.getElementById('game-over');
+            const finalScoreElement = document.getElementById('final-score');
+
+            gameOverElement.style.display = 'block';
+            finalScoreElement.textContent = score;
+            tg.HapticFeedback.impactOccurred('heavy');
+            sendGameResult(score);
+        }
+
+        function initializeGame() {
+            objects = [];
+            obstacles = [];
+            score = 0;
+            player.x = canvas.width / 2 - 15;
+            player.y = canvas.height - 50 - 20;
+            objectSpeed = 2;
+            gameOver = false;
+
+            const gameOverElement = document.getElementById("game-over");
+            gameOverElement.style.display = "none";
+
+            const airplane = document.getElementById("player");
+            airplane.style.display = "block"; // Show the airplane image
+
+            for (let i = 0; i < 5; i++) {
+                generateObject();
+            }
+
+            for (let i = 0; i < 3; i++) {
+                generateObstacle();
+            }
+            const scoreDisplay = document.getElementById("score-display");
+            scoreDisplay.style.display = "block";
+            startSpeedIncrease();
+        }
+
+
+        // Function to generate objects (items that give points)
+        function generateObject() {
+            const object = new Image();
+            object.src = "images/coin.png"; // Replace with your image URL
+            object.width = objectHeight;
+            object.height = objectWidth;
+            const left = Math.random() * (canvas.width - objectWidth);
+            const top = -objectHeight;
+            object.style.position = "absolute";
+            object.style.left = left + "px";
+            object.style.top = top + "px";
+            document.body.appendChild(object);
+            objects.push({ element: object, x: left, y: top });
+        }
+
+        // Function to generate obstacles (items that kill the player)
+        function generateObstacle() {
+            const obstacleImg = new Image();
+            obstacleImg.src = "images/death.svg"; // Replace with your SVG file URL
+
+            obstacleImg.onload = function () {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = objectWidth;
+                canvas.height = objectHeight;
+
+                // Draw the image onto the canvas
+                ctx.drawImage(obstacleImg, 0, 0, objectWidth, objectHeight);
+
+                // Get the canvas image data
+                const imageData = ctx.getImageData(0, 0, objectWidth, objectHeight);
+
+                // Adjust the fill color based on the theme
+                if (tg.colorScheme === "light") {
+                    // Change the pixel colors to black in light mode
+                    for (let i = 0; i < imageData.data.length; i += 4) {
+                        const red = imageData.data[i];
+                        const green = imageData.data[i + 1];
+                        const blue = imageData.data[i + 2];
+                        const alpha = imageData.data[i + 3];
+
+                        // Check if the pixel is not fully transparent
+                        if (alpha > 0) {
+                            // Change the pixel color to black
+                            imageData.data[i] = 0;
+                            imageData.data[i + 1] = 0;
+                            imageData.data[i + 2] = 0;
+                        }
+                    }
+                }
+
+                // Put the modified image data back onto the canvas
+                ctx.putImageData(imageData, 0, 0);
+
+                const left = Math.random() * (canvas.width - objectWidth);
+                const top = -objectHeight;
+                canvas.style.position = "absolute";
+                canvas.style.left = left + "px";
+                canvas.style.top = top + "px";
+
+                document.body.appendChild(canvas);
+
+                obstacles.push({ element: canvas, x: left, y: top });
+            };
+        }
+
+
+
+
+        // Define a variable to keep track of the speed increase intervals
+        let speedIncreaseInterval;
+
+        // Function to increase the game speed
+        function increaseSpeed() {
+            objectSpeed *= 1.01;
+        }
+
+        // start  increasing speed when the game is over
+        function startSpeedIncrease() {
+            speedIncreaseInterval = setInterval(increaseSpeed, 1000);
+        }
+
+        // Stop increasing speed when the game is over
+        function stopSpeedIncrease() {
+            clearInterval(speedIncreaseInterval);
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (!gameOver) {
+                drawAirplane(); // Draw the airplane image
+                moveObjects();
+                moveObstacles();
+                collisionDetection();
+                drawObjects();
+                drawObstacles();
+
+                requestAnimationFrame(gameLoop);
+            } else {
+                drawGameOver();
+                stopSpeedIncrease(); // Stop increasing speed when the game is over
+            }
+        }
+
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        window.addEventListener("mousemove", (e) => {
+            const mouseX = e.clientX - canvas.getBoundingClientRect().left;
+            player.x = mouseX - player.width / 2;
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+            player.x = touchX - player.width / 2;
+        });
+
+
+        const gameCanvas = document.getElementById("gameCanvas");
+        const startMenu = document.getElementById("start-menu");
+        const startButton = document.getElementById("start-button");
+
+        // Add an event listener to the "Start Game" button
+        startButton.addEventListener("click", () => {
+            // Hide the start menu
+            startMenu.style.display = "none";
+
+            // Show the game canvas
+            gameCanvas.style.display = "block";
+
+            // Initialize and start the game here...
+        initializeGame();
+        gameLoop();
+        });
+        document.getElementById("restart-button").addEventListener("click", () => {
+            initializeGame();
+            gameLoop();
+        });
+        // Function to fetch top players
+        function fetchTopPlayers() {
+            // Make a GET request to '/get-game-top'
+            fetch('/get-game-top')
+                .then((response) => response.json())
+                .then((data) => {
+                    // Display the top players in a user-friendly way
+                    alert('Top Players: ' + JSON.stringify(data));
+                })
+                .catch((error) => {
+                    console.error('Error fetching top players: ', error);
+                });
+        }
+
+        // Function to send game result
+        function sendGameResult(score) {
+            const data = {
+                data: tg.initDataUnsafe,
+                hash: tg.initDataUnsafe.hash,
+                data_str: tg.initData,
+                score: score,
+            };
+
+            // Make a POST request to '/send-game-result'
+            fetch('/send-game-result', {
+                method: 'POST',
+                body: JSON.stringify(data),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then((response) => response.json())
+            .then((result) => {
+                best_result = result.result;
+
+                // Update the best score if it's higher than the current best score
+                const bestScoreElement = document.getElementById('best-score');
+                if (best_result.score > parseInt(bestScoreElement.textContent)) {
+                    bestScoreElement.textContent = best_result.score;
+
+                }
+                const withScoreElement = document.getElementById('best-score');
+
+            })
+            .catch((error) => {
+                console.error('Error sending game result: ', error);
+            });
+        }
+        // Add an event listener to a button that fetches the top players
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('top-players-button')) {
+                fetchTopPlayers();
+            }
+        });
+
+
+        // Function to fetch top players
+        function fetchTopPlayers() {
+            // Make a GET request to '/get-game-top'
+            fetch('/get-game-top')
+                .then((response) => response.json())
+                .then((data) => {
+                    // Format the top players' data as a list
+                    const topPlayersList = data.map((player, index) => {
+                        return `${index + 1}. ${player.username} - ${player.score}`;
+                    });
+
+                    // Join the list items with line breaks
+                    const topPlayersText = topPlayersList.join('\n');
+
+                    // Create a PopupParams object
+                    const popupParams = {
+                        title: 'Top Players',
+                        message: topPlayersText,
+                        buttons: [{ type: 'close' }],
+                    };
+
+                    // Show the popup
+                    tg.showPopup(popupParams, () => {
+                        // Optional callback function
+                        console.log('Popup closed');
+                    });
+                })
+                .catch((error) => {
+                    console.error('Error fetching top players: ', error);
+                });
+        }
+
+
+    </script>
+
+
+</body>
+</html>

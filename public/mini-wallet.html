@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram-Styled Wallet with Custom QR Code</title>
+
+    <!-- External JavaScript libraries -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.rawgit.com/davidshimjs/qrcodejs/gh-pages/qrcode.min.js"></script>
+
+    <!-- Internal Styles -->
+    <style>
+        /* General styling */
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+        }
+
+        /* Input styling */
+        input[type="text"],
+        input[type="number"] {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            width: 100%;
+            background-color: var(--tg-theme-bg-color);
+            border: 1px solid var(--tg-theme-secondary-bg-color);
+            border-radius: 5px;
+            font-size: 20px;
+            padding: 5px;
+            color: var(--tg-theme-text-color);
+        }
+
+        /* Remove number input spinners */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        /* Page-wide styling */
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+        }
+
+        /* Styling for the wallet container */
+        .wallet-container {
+            background-color: var(--tg-theme-secondary-bg-color);
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        /* Styling for the new page */
+        #new-page {
+            background-color: var(--tg-theme-bg-color);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            justify-content: center;
+            align-items: center;
+            z-index: 1;
+            display: none; /* Initially hidden */
+        }
+
+        /* Styling for page content */
+        .page-content {
+            background-color: var(--tg-theme-bg-color);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        /* Styling for buttons */
+        .copy-button,
+        .submit-button {
+            background-color: var(--tg-theme-button-color);
+            color: var(--tg-theme-button-text-color);
+            border: none;
+            border-radius: 5px;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        /* Styling for QR code container */
+        .qr-code-container {
+            background-color: var(--tg-theme-bg-color);
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Styling for custom QR code image */
+        .custom-qr-code img {
+            width: 100%;
+            height: auto;
+        }
+
+        /* Hide elements with the "hidden" class */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="wallet-container">
+        <h1>Bag Wallet</h1>
+
+        <!-- Display Unique ID -->
+        <p>Your Unique ID: <span id="unique-id"></span></p>
+
+        <!-- Copy ID Button -->
+        <button class="copy-button" id="copy-button" onclick="copyWalletId()">Copy ID</button>
+
+        <!-- Display Wallet Balance -->
+        <p>Wallet Balance: <span id="wallet-balance">$0.00</span></p>
+
+        <!-- QR Code Container -->
+        <div class="qr-code-container" id="qr-code-container">
+            <p>Scan the QR code below:</p>
+            <div class="custom-qr-code" id="custom-qr-code"></div>
+        </div>
+
+        <!-- Submit Button -->
+        <button class="submit-button" id="submit-button" onclick="openNewPage()">Send</button>
+    </div>
+
+    <!-- New Page Content (Initially Hidden) -->
+    <div id="new-page" class="hidden">
+        <div class="page-content">
+            <h2>Enter ID or Scan QR Code</h2>
+
+            <!-- Form to enter ID and amount sent -->
+            <form id="wallet-form">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <label for="user-id">User ID:</label>
+                </div>
+                <div style="display: flex; flex-direction: row; align-items: center;justify-content:center;">
+                    <input type="text" id="user-id" name="user-id" autocomplete="off">
+                    <div style="position: relative; width: 26px; height: 26px; margin-left: 10px;">
+                        <object id="scan-qr-button" data="images/qr-code.svg#scan" style="width: 100%; height: 100%;"></object>
+                        <div style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; cursor: pointer;" onclick="showQRScanner();"></div>
+                    </div>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <label for="amount-sent">Amount Sent:</label>
+                    <input type="number" id="amount-sent" name="amount-sent">
+                </div>
+                <br><br>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram WebApp
+        let tg = window.Telegram.WebApp;
+
+        // Create a BackButton instance
+        var backButton = tg.BackButton;
+
+        // Load the scan QR code button and set its fill color
+        var playerObject = document.getElementById("scan-qr-button");
+        if (playerObject) {
+            playerObject.onload = function() {
+                var svgDocument = playerObject.contentDocument;
+                var svgElement = svgDocument.getElementById("scan");
+                svgElement.setAttribute("fill", tg.themeParams.link_color);
+            };
+        }
+
+        // Function to generate a unique ID
+        function generateUniqueId() {
+            // Generate a random unique ID
+            return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        }
+
+        // Function to generate a custom QR code with colors
+        function generateCustomQRCode(text) {
+            // Configuration options for the QR code
+            var options = {
+                width: 256,
+                height: 256,
+                colorDark: tg.themeParams.link_color, // Dark color
+                colorLight: tg.themeParams.bg_color, // Light color
+                correctLevel: QRCode.CorrectLevel.H, // Error correction level (High)
+            };
+
+            var qrCodeContainer = document.getElementById("custom-qr-code");
+
+            // Remove the existing QR code, if any
+            while (qrCodeContainer.firstChild) {
+                qrCodeContainer.removeChild(qrCodeContainer.firstChild);
+            }
+
+            var qrcode = new QRCode(qrCodeContainer, options);
+            qrcode.makeCode(text);
+        }
+
+        // Function to copy the wallet ID to the clipboard
+        function copyWalletId() {
+            var textArea = document.createElement("textarea");
+            var uniqueId = document.getElementById("unique-id").textContent;
+            textArea.value = uniqueId;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+
+            // Show a Telegram-style alert
+            tg.showAlert("Wallet ID copied to clipboard!");
+        }
+
+        // Function to open the new page and hide current content
+        function openNewPage() {
+            var walletContainer = document.querySelector(".wallet-container");
+            var newPage = document.getElementById("new-page");
+            var qrCodeContainer = document.getElementById("qr-code-container");
+            var copyButton = document.getElementById("copy-button");
+            var submitButton = document.getElementById("submit-button");
+
+            // Show new page content
+            newPage.style.display = "block";
+
+            // Show the Telegram Back Button
+            backButton.isVisible = true;
+            tg.MainButton.show();
+            tg.MainButton.text = 'Confirm';
+            Telegram.WebApp.onEvent('mainButtonClicked', Send);
+
+            // Set the onClick callback for the Back Button
+            backButton.onClick(goBack);
+        }
+
+        // Function to go back to the previous page
+        function goBack() {
+            var walletContainer = document.querySelector(".wallet-container");
+            var newPage = document.getElementById("new-page");
+
+            // Hide the new page content
+            newPage.style.display = "none";
+
+            // Hide the Telegram Back Button and Main Button
+            backButton.isVisible = false;
+            tg.MainButton.hide();
+        }
+
+        // Function to show the QR scanner popup (only for mobile devices)
+        function showQRScanner() {
+            // Check if the user is using a mobile device
+            var isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+            if (isMobileDevice) {
+                // Use Telegram's native popup for scanning QR codes
+                var params = {
+                    text: "Scan the recipient's QR code",
+                };
+
+                tg.showScanQrPopup(params, function(qrText) {
+                    // Handle the QR code text received
+                    if (qrText) {
+                        // Close the QR scanner popup
+                        tg.closeScanQrPopup();
+
+                        // Set the scanned user ID in the input field
+                        document.getElementById("user-id").value = qrText;
+                    }
+                });
+            } else {
+                // Show a message that QR code scanning is only supported on mobile devices
+                tg.showAlert("QR code scanning is only supported on mobile devices.");
+            }
+        }
+
+        // Handle form submission (you can customize this part)
+        var walletForm = document.getElementById("wallet-form");
+        function Send(event) {
+            var userId = document.getElementById("user-id").value;
+            var amountSent = parseFloat(document.getElementById("amount-sent").value); // Parse as float
+
+            if (userId === '') {
+                // Handle the case where userId is empty
+                tg.showAlert('Please enter the correct userID.');
+                return;
+            } else if (isNaN(amountSent)) {
+                // Handle the case where amountSent is not a valid number
+                tg.showAlert('Please enter a valid numeric amount.');
+                return;
+            }
+
+            // Create an object to send as the request body
+            var requestData = {
+                data: tg.initDataUnsafe,
+                hash: tg.initDataUnsafe.hash,
+                data_str: tg.initData,
+                getter: userId,  // Replace with the appropriate getter (recipient's wallet ID)
+                value: amountSent, // Replace with the appropriate value (amount to send)
+            };
+
+            // Perform a POST request to '/wallet_data'
+            fetch('/wallet_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData),
+            })
+            .then(function(response) {
+                if (response.ok) {
+                    return response.json(); // Parse the JSON response
+                } else {
+                    // Handle error response
+                    console.error('Failed to send data');
+                    throw new Error('Failed to send data'); // Throw an error to trigger the catch block
+                }
+            })
+            .then(function(data) {
+                // Check if the JSON response contains an error parameter
+                if (data && data.error) {
+                    // Handle the error by displaying it in an alert
+                    tg.showAlert(data.error);
+                } else {
+                    // No error, display success message
+                    tg.showAlert(`Sending $${amountSent.toFixed(2)} to User ID: ${userId}`);
+                    goBack();
+                }
+
+                // Hide the keyboard after submitting the form
+                document.activeElement.blur();
+            })
+            .catch(function(error) {
+                // Handle network error or error in the fetch request
+                console.error('Network error or fetch error:', error);
+            });
+        }
+
+        // Function to retrieve wallet data periodically
+        async function getWalletData() {
+            try {
+                const response = await fetch('/wallet_data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        data: tg.initDataUnsafe,
+                        hash: tg.initDataUnsafe.hash,
+                        data_str: tg.initData,
+                    }),
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+
+                    // Update the wallet balance on the page
+                    walletBalance = data.balance;
+                    document.getElementById("wallet-balance").textContent = `$${walletBalance.toFixed(2)}`;
+
+                    // Display the unique ID
+                    var uniqueIdElement = document.getElementById("unique-id");
+                    uniqueIdElement.textContent = data.wallet_id;
+                    generateCustomQRCode(data.wallet_id);
+                } else {
+                    // Handle error response
+                    console.error('Failed to retrieve wallet data');
+                }
+            } catch (error) {
+                // Handle network error
+                console.error('Network error:', error);
+            }
+        }
+
+        // Retrieve wallet data initially and periodically
+        getWalletData();
+        setInterval(getWalletData, 5000);
+    </script>
+</body>
+</html>

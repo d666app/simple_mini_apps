@@ -1,0 +1,68 @@
+[
+    {
+        "id": "0",
+        "songer": "\u0421\u041c\u0415\u0422\u0410\u041d\u0410 Band",
+        "name": "\u041f\u0435\u0441",
+        "score": 1
+    },
+    {
+        "id": "1",
+        "songer": "Ashnikko",
+        "name": "Nice Girl",
+        "score": 0
+    },
+    {
+        "id": "2",
+        "songer": "GAYLE",
+        "name": "abcdefu",
+        "score": 0
+    },
+    {
+        "id": "3",
+        "songer": "Oxxxymiron",
+        "name": "\u0412 \u0433\u043e\u0432\u043d\u0435",
+        "score": 0
+    },
+    {
+        "id": "4",
+        "songer": "Cardi B",
+        "name": "Thru Your Phone",
+        "score": 0
+    },
+    {
+        "id": "5",
+        "songer": "Markul",
+        "name": "Cuba Libre",
+        "score": 0
+    },
+    {
+        "songer": "\u0413\u0430\u0440\u0440\u0438 \u0422\u043e\u043f\u043e\u0440\r\n",
+        "name": "\u0413\u043e\u0440\u043e\u0434 \u043d\u0430 \u043a\u0440\u043e\u0432\u0438\r\n",
+        "score": 0,
+        "id": "6"
+    },
+    {
+        "songer": "\u041d\u0430\u0441\u0442\u044f \u0413\u043e\u043d\u0446\u0443\u043b\r\n",
+        "name": "\u0422\u043e\u043f \u0447\u0430\u0440\u0442\u044b\r\n",
+        "score": 0,
+        "id": "7"
+    },
+    {
+        "songer": "Asylllum\r\n",
+        "name": "\u0412 \u043a\u043d\u0438\u0433\u0435 \u0432\u0441\u0435 \u0431\u044b\u043b\u043e \u043f\u043e-\u0434\u0440\u0443\u0433\u043e\u043c\u0443\r\n",
+        "score": 1,
+        "id": "8"
+    },
+    {
+        "songer": "B\u00fclow\r\n",
+        "name": "Sweet Little Lies\r\n",
+        "score": 1,
+        "id": "9"
+    },
+    {
+        "songer": "Maty Noyes\r\n",
+        "name": "New Friends\r\n",
+        "score": 0,
+        "id": "10"
+    }
+]

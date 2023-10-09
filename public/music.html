@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            margin-left: auto;
+            margin-right: auto;
+            padding-left: auto;
+            padding-right: auto;
+            max-width: 600px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: var(--tg-theme-bg-color); /* Telegram theme background color */
+            color: var(--tg-theme-text-color); /* Telegram theme text color */
+            font-size: 15px;
+            font-family: 'roboto mono';
+        }
+
+        /* Input style */
+        input[type="text"] {
+            width: 100%;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 1px solid var(--tg-theme-hint-color); /* Telegram theme hint color */
+            border-radius: 5px;
+            background-color: var(--tg-theme-bg-color); /* Telegram theme background color */
+            color: var(--tg-theme-text-color); /* Telegram theme text color */
+            font-size: 16px;
+        }
+
+        /* File input style */
+        input[type="file"] {
+            width: 100%;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            border: 1px solid var(--tg-theme-hint-color); /* Telegram theme hint color */
+            border-radius: 5px;
+            background-color: var(--tg-theme-bg-color); /* Telegram theme background color */
+            color: var(--tg-theme-text-color); /* Telegram theme text color */
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        /* Upload button style */
+        button {
+            background-color: var(--tg-theme-button-color); /* Telegram theme button color */
+            color: var(--tg-theme-button-text-color); /* Telegram theme button text color */
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: var(--tg-theme-link-color); /* Telegram theme link color */
+        }
+        /* Plus button styles */
+        .upload-button {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            background-color: var(--tg-theme-button-color); /* Telegram theme button color */
+            color: var(--tg-theme-button-text-color); /* Telegram theme button text color */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            text-align: center;
+            line-height: 40px;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: var(--tg-theme-bg-color);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: var(--tg-theme-bg-color);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid var(--tg-theme-hint-color);
+            border-radius: 20px;
+            width: 80%;
+        }
+
+        .close {
+            color: var(--tg-theme-text-color);
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: var(--tg-theme-link-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        @font-face {
+            font-family: 'roboto mono';
+            src: url('RobotoMono-Regular.ttf') format('truetype');
+        }
+
+        .miniround {
+            border-bottom: 2px inset var(--tg-theme-hint-color); /* Telegram theme hint color */
+            padding: 10px;
+            padding-right: 200px;
+        }
+
+        .minisonger {
+            font-size: 10px;
+            display: flex;
+            flex-direction: row;
+            color: var(--tg-theme-link-color); /* Telegram theme link color */
+            margin-top: 3px;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: transparent;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            background-color: var(--tg-theme-hint-color); /* Telegram theme background color */
+            border-radius: 5px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 10px;
+            height: 10px;
+            background-color: var(--tg-theme-button-color); /* Telegram theme button color */
+            border: 1px solid var(--tg-theme-button-text-color); /* Telegram theme button text color */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-moz-range-progress {
+            background-color: var(--tg-theme-button-color); /* Telegram theme button color */
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 10px;
+            height: 10px;
+            background-color: var(--tg-theme-button-color); /* Telegram theme button color */
+            border: 1px solid var(--tg-theme-button-text-color); /* Telegram theme button text color */
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        /* Style for like and dislike buttons */
+        .like-button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            color:var(--tg-theme-hint-color);
+
+        }
+
+        .like-button.liked {
+            background-color: var(--tg-theme-hint-color); /* Telegram theme button color */
+            border-radius: 100%;
+        }
+
+        .dislike-button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            color:var(--tg-theme-hint-color);
+        }
+
+        .dislike-button.disliked {
+            background-color: var(--tg-theme-hint-color); /* Telegram theme button color */
+            border-radius: 100%;
+        }
+    </style>
+
+    <script>
+        let tg = window.Telegram.WebApp;
+
+        const jsmediatags = window.jsmediatags;
+        var audio = new Audio();
+        audio.src = '';
+        micro = audio.src;
+        const playCharacter = "▶";
+        const pauseCharacter = "🔊";
+        let currentTrackIndex = -1; // Initialize the current track index to -1 (no track playing)
+        let currentTrackId = null; // Initialize the current track ID as null
+
+        // Define an array of track IDs in your playlist
+        let playlist = [];
+
+        function onsound(obj) {
+            const this_src = `songs/${obj.id}.mp3`;
+
+            if (currentTrackId === obj.id) {
+                // Clicked on the currently playing track, so pause it
+                audio.pause();
+                obj.innerHTML = obj.innerHTML.replace(pauseCharacter, playCharacter);
+                currentTrackId = null; // No track is playing
+                currentTrackIndex = -1; // Reset the current track index
+            } else {
+                // Pause the current track (if any)
+                if (currentTrackId !== null) {
+                    const currentButton = document.getElementById(currentTrackId);
+                    const currentSrc = `songs/${currentButton.id}.mp3`;
+                    audio.src = currentSrc;
+                    audio.pause();
+                    currentButton.innerHTML = currentButton.innerHTML.replace(pauseCharacter, playCharacter);
+                }
+
+                // Start playing the clicked track
+                audio.src = this_src;
+                audio.play();
+                obj.innerHTML = obj.innerHTML.replace(playCharacter, pauseCharacter);
+
+                // Update the current track information
+                currentTrackId = obj.id;
+                currentTrackIndex = playlist.indexOf(obj.id);
+            }
+        }
+
+        // Add an event listener to check when the audio ends
+        audio.addEventListener("ended", playNextTrack);
+
+        function seekTrack(value) {
+            const duration = audio.duration;
+            const newPosition = (value / 100) * duration;
+            audio.currentTime = newPosition;
+        }
+
+        // Update the slider position as the audio plays
+        audio.addEventListener("timeupdate", updateSeekSlider);
+
+        function updateSeekSlider() {
+            const currentTime = audio.currentTime;
+            const duration = audio.duration;
+            const seekSlider = document.getElementById("seekSlider");
+
+            if (duration > 0) {
+                const newValue = (currentTime / duration) * 100;
+                seekSlider.value = newValue;
+            }
+        }
+
+        function playNextTrack() {
+            // Get the index of the next track in the playlist
+            const nextTrackIndex = (currentTrackIndex + 1) % playlist.length;
+
+            // Reset the icon of the current track to ▶
+            if (currentTrackIndex !== -1) {
+                const currentTrackButton = document.getElementById(playlist[currentTrackIndex]);
+                currentTrackButton.innerHTML = currentTrackButton.innerHTML.replace(pauseCharacter, playCharacter);
+            }
+
+            // Update the current track information
+            currentTrackIndex = nextTrackIndex;
+            currentTrackId = playlist[currentTrackIndex];
+
+            // Play the next track
+            const nextTrackButton = document.getElementById(currentTrackId);
+            const nextSrc = `songs/${currentTrackId}.mp3`;
+
+            audio.src = nextSrc;
+            audio.play();
+            nextTrackButton.innerHTML = nextTrackButton.innerHTML.replace(playCharacter, pauseCharacter);
+        }
+
+        function toggleSeekSlider(visible) {
+            const seekSlider = document.getElementById("seekSlider");
+            seekSlider.style.display = visible ? "block" : "none";
+        }
+
+        // Add event listeners to control the seekSlider visibility
+        audio.addEventListener("play", function () {
+            toggleSeekSlider(true); // Show seekSlider when playback starts
+        });
+
+        audio.addEventListener("pause", function () {
+            toggleSeekSlider(false); // Hide seekSlider when playback is paused
+        });
+        function sendReaction(songId, action) {
+            const xhr = new XMLHttpRequest();
+            xhr.open("POST", "/send_reaction", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+
+            const data = JSON.stringify({ trackId: songId, action: action });
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // You can handle the server response here if needed
+                        console.log("Reaction sent successfully");
+                    } else {
+                        console.error("Failed to send reaction:", xhr.statusText);
+                    }
+                }
+            };
+
+            xhr.send(data);
+        }
+
+        function likeSong(songId) {
+            const likeButton = document.getElementById(`${songId}_like_button`);
+            const dislikeButton = document.getElementById(`${songId}_dislike_button`);
+
+            tg.CloudStorage.getItem(`dislike_${songId}`, (error, disliked) => {
+                if (!error && disliked) {
+                    // User has previously disliked the song, so cancel the dislike
+                    tg.CloudStorage.removeItem(`dislike_${songId}`, (error, success) => {
+                        if (success) {
+                            dislikeButton.classList.remove("disliked");
+                            // Continue to like the song
+                            tg.CloudStorage.setItem(`like_${songId}`, true, (error, success) => {
+                                if (success) {
+                                    likeButton.classList.add("liked");
+                                    // Send a POST request to indicate the like action
+                                    sendReaction(songId, "like");
+                                } else {
+                                    console.error("Error while saving like status:", error);
+                                }
+                            });
+                        } else {
+                            console.error("Error while canceling dislike:", error);
+                        }
+                    });
+                } else {
+                    // User hasn't disliked the song, proceed to like it
+                    tg.CloudStorage.getItem(`like_${songId}`, (error, liked) => {
+                        if (!error && liked) {
+                            // User has previously liked the song, so cancel the like
+                            tg.CloudStorage.removeItem(`like_${songId}`, (error, success) => {
+                                if (success) {
+                                    likeButton.classList.remove("liked");
+                                    // Send a POST request to indicate the unlike action
+                                    sendReaction(songId, "unlike");
+                                } else {
+                                    console.error("Error while canceling like:", error);
+                                }
+                            });
+                        } else {
+                            // User hasn't liked the song, proceed to like it
+                            tg.CloudStorage.setItem(`like_${songId}`, true, (error, success) => {
+                                if (success) {
+                                    likeButton.classList.add("liked");
+                                    // Send a POST request to indicate the like action
+                                    sendReaction(songId, "like");
+                                } else {
+                                    console.error("Error while saving like status:", error);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function dislikeSong(songId) {
+            const likeButton = document.getElementById(`${songId}_like_button`);
+            const dislikeButton = document.getElementById(`${songId}_dislike_button`);
+
+            tg.CloudStorage.getItem(`like_${songId}`, (error, liked) => {
+                if (!error && liked) {
+                    // User has previously liked the song, so cancel the like
+                    tg.CloudStorage.removeItem(`like_${songId}`, (error, success) => {
+                        if (success) {
+                            likeButton.classList.remove("liked");
+                            // Continue to dislike the song
+                            tg.CloudStorage.setItem(`dislike_${songId}`, true, (error, success) => {
+                                if (success) {
+                                    dislikeButton.classList.add("disliked");
+                                    // Send a POST request to indicate the dislike action
+                                    sendReaction(songId, "dislike");
+                                } else {
+                                    console.error("Error while saving dislike status:", error);
+                                }
+                            });
+                        } else {
+                            console.error("Error while canceling like:", error);
+                        }
+                    });
+                } else {
+                    // User hasn't liked the song, proceed to dislike it
+                    tg.CloudStorage.getItem(`dislike_${songId}`, (error, disliked) => {
+                        if (!error && disliked) {
+                            // User has previously disliked the song, so cancel the dislike
+                            tg.CloudStorage.removeItem(`dislike_${songId}`, (error, success) => {
+                                if (success) {
+                                    dislikeButton.classList.remove("disliked");
+                                    // Send a POST request to indicate the undislike action
+                                    sendReaction(songId, "undislike");
+                                } else {
+                                    console.error("Error while canceling dislike:", error);
+                                }
+                            });
+                        } else {
+                            // User hasn't disliked the song, proceed to dislike it
+                            tg.CloudStorage.setItem(`dislike_${songId}`, true, (error, success) => {
+                                if (success) {
+                                    dislikeButton.classList.add("disliked");
+                                    // Send a POST request to indicate the dislike action
+                                    sendReaction(songId, "dislike");
+                                } else {
+                                    console.error("Error while saving dislike status:", error);
+                                }
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+        function openUploadModal() {
+            const modal = document.getElementById("uploadModal");
+            modal.style.display = "block";
+        }
+
+        // Function to close the upload modal
+        function closeUploadModal() {
+            const modal = document.getElementById("uploadModal");
+            modal.style.display = "none";
+        }
+        function fetchUpdatedSongData() {
+            const songsContainer = document.getElementById('songs');
+            const xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // Parse the JSON response
+                        const response = JSON.parse(xhr.responseText);
+
+                        // Clear the existing content in the songs container
+                        songsContainer.innerHTML = '';
+
+                        // Loop through the received tracks and add them to the container
+                        response.forEach(function (track) {
+                            const songDiv = document.createElement('div');
+                            songDiv.classList.add('miniround');
+                            songDiv.innerHTML = `
+                                <div onclick="onsound(this)" id="${track.id}" style="cursor:pointer;">
+                                    <div>▶ ${track.name}</div>
+                                    <div class="minisonger">${track.songer}</div>
+                                </div>
+                                <button id="${track.id}_like_button" class="like-button" onclick="likeSong('${track.id}')">👍</button>
+                                <button id="${track.id}_dislike_button" class="dislike-button" onclick="dislikeSong('${track.id}')">👎</button>
+                            `;
+
+                            // Append the songDiv to the songs container
+                            songsContainer.appendChild(songDiv);
+
+                            // Add the track ID to the playlist array
+                            playlist.push(track.id);
+                        });
+
+                        // Call the checkUserPreferences function to handle liked/disliked songs
+                        checkUserPreferences();
+                    } else {
+                        console.error('Failed to fetch music data:', xhr.statusText);
+                    }
+                }
+            };
+
+            // Make the GET request to '/get_music' (adjust the URL as needed)
+            xhr.open('GET', '/get_music', true);
+            xhr.send();
+        }
+
+
+
+        function uploadMusic() {
+            const artist = document.getElementById("artist").value;
+            const songTitle = document.getElementById("songTitle").value;
+            const musicFileInput = document.getElementById("musicFile");
+            const progressBar = document.getElementById("progressBar");
+            const progressText = document.getElementById("progressText");
+
+            // Check if a music file is selected
+            if (musicFileInput.files.length > 0) {
+                const musicFile = musicFileInput.files[0];
+
+                // Initialize the XMLHttpRequest
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "/upload_mp3", true);
+
+                // Track upload progress
+                xhr.upload.onprogress = function(event) {
+                    if (event.lengthComputable) {
+                        const percentComplete = (event.loaded / event.total) * 100;
+                        progressBar.style.width = percentComplete + "%";
+                        progressText.innerText = percentComplete.toFixed(2) + "%";
+                    }
+                };
+
+                xhr.onreadystatechange = function() {
+                    if (xhr.readyState === 4) {
+                        if (xhr.status === 200) {
+                            // Handle the success response from the server
+                            const response = JSON.parse(xhr.responseText);
+                            console.log("Track uploaded successfully. Song ID: " + response.new_song_id);
+                            closeUploadModal();
+
+                            // Fetch updated song data and refresh the playlist
+                            fetchUpdatedSongData();
+                        } else {
+                            // Handle the error response from the server
+                            console.error("Failed to upload track:", xhr.statusText);
+                            tg.showAlert("Failed to upload track. Please try again.");
+                        }
+                    }
+                };
+
+                // Create a FormData object to send the file and form fields
+                const formData = new FormData();
+                formData.append("musicFile", musicFile);
+                formData.append("artist", artist);
+                formData.append("songTitle", songTitle);
+
+                // Send the FormData object as the request body
+                xhr.send(formData);
+            } else {
+                tg.showAlert("Please select a music file to upload.");
+            }
+        }
+
+
+        // Function to convert ArrayBuffer to base64 string
+        function arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return window.btoa(binary);
+        }
+
+
+
+        function checkUserPreferences() {
+            // Check if the user has liked/disliked each song and update the button styles
+            playlist.forEach((songId) => {
+                tg.CloudStorage.getItem(`like_${songId}`, (error, liked) => {
+                    if (!error && liked) {
+                        // User has liked this song, update the like button style
+                        const likeButton = document.getElementById(`${songId}_like_button`);
+                        likeButton.classList.add("liked");
+                    }
+                });
+
+                tg.CloudStorage.getItem(`dislike_${songId}`, (error, disliked) => {
+                    if (!error && disliked) {
+                        // User has disliked this song, update the dislike button style
+                        const dislikeButton = document.getElementById(`${songId}_dislike_button`);
+                        dislikeButton.classList.add("disliked");
+                    }
+                });
+            });
+        }
+        function addNewTrackToPlaylist(newTrackId, trackName, trackSonger) {
+            // Add the new track ID to the playlist array
+            playlist.push(newTrackId);
+
+            // Create a new DOM element for the track and add it to the songs container
+            const songDiv = document.createElement('div');
+            songDiv.classList.add('miniround');
+            songDiv.innerHTML = `
+                <div onclick="onsound(this)" id="${newTrackId}" style="cursor:pointer;">
+                    <div>▶ ${trackName}</div>
+                    <div class="minisonger">${trackSonger}</div>
+                </div>
+                <button id="${newTrackId}_like_button" class="like-button" onclick="likeSong('${newTrackId}')">👍</button>
+                <button id="${newTrackId}_dislike_button" class="dislike-button" onclick="dislikeSong('${newTrackId}')">👎</button>
+            `;
+
+            songsContainer.appendChild(songDiv);
+        }
+
+        function OnLoad() {
+            const songsContainer = document.getElementById('songs');
+            const xhr = new XMLHttpRequest();
+
+            xhr.onreadystatechange = function () {
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        // Parse the JSON response
+                        const response = JSON.parse(xhr.responseText);
+
+                        // Clear the existing content in the songs container
+                        songsContainer.innerHTML = '';
+
+                        // Loop through the received tracks and add them to the container
+                        response.forEach(function (track) {
+                            const songDiv = document.createElement('div');
+                            songDiv.classList.add('miniround');
+                            songDiv.innerHTML = `
+                                <div onclick="onsound(this)" id="${track.id}" style="cursor:pointer;">
+                                    <div>▶ ${track.name}</div>
+                                    <div class="minisonger">${track.songer}</div>
+                                </div>
+                                <button id="${track.id}_like_button" class="like-button" onclick="likeSong('${track.id}')">👍</button>
+                                <button id="${track.id}_dislike_button" class="dislike-button" onclick="dislikeSong('${track.id}')">👎</button>
+                            `;
+
+                            // Append the songDiv to the songs container
+                            songsContainer.appendChild(songDiv);
+
+                            // Add the track ID to the playlist array
+                            playlist.push(track.id);
+                        });
+
+                        // Call the checkUserPreferences function to handle liked/disliked songs
+                        checkUserPreferences();
+                    } else {
+                        console.error('Failed to fetch music data:', xhr.statusText);
+                    }
+                }
+            };
+
+            // Make the GET request to '/get_music' (adjust the URL as needed)
+            xhr.open('GET', '/get_music', true);
+            xhr.send();
+            checkUserPreferences();
+        }
+
+    </script>
+</head>
+
+<body onload=OnLoad()>
+
+        <input type="range" id="seekSlider" min="0" value="0" step="1" style="width: 100%;display:None;"
+            oninput="seekTrack(this.value)" onchange="seekTrack(this.value)">
+		<div id='songs'>
+
+		</div>
+        <!-- Plus button for opening the upload modal -->
+        <div class="upload-button" onclick="openUploadModal()">+</div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeUploadModal()">&times;</span>
+                <h2>Upload New Track</h2>
+                <label for="artist">Artist:</label><br>
+                <input type="text" id="artist"><br>
+                <label for="songTitle">Song Title:</label><br>
+                <input type="text" id="songTitle">
+                <!-- Input for uploading the music file -->
+                <input type="file" accept=".mp3" id="musicFile">
+                <button onclick="uploadMusic()">Upload</button>
+                <div id="progressBar"></div>
+                <div id="progressText"></div>
+
+            </div>
+        </div>
+
+
+</body>
+
+</html>
