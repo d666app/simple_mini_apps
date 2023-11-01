@@ -27,7 +27,6 @@
 # Telegram Mini Apps Showcase
 
 Welcome to the Telegram Mini App Showcase for the Telegram Mini App Contest! These mini apps showcase the various functionality and creativity of the Telegram ecosystem. Whether you're a beginner or an experienced developer, these mini-apps offer a wide range of features that you can explore.
-From the user side, you can check out the link - https://t.me/whitebagbot
 
 ## Prerequisites
 
